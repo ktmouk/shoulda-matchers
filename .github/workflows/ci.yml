@@ -22,7 +22,9 @@ jobs:
           POSTGRES_PASSWORD: postgres
         ports: [ '5432:5432' ]
         options: --health-cmd pg_isready --health-interval 2s --health-timeout 1s --health-retries 10
+
     runs-on: ubuntu-latest
+
     strategy:
       fail-fast: false
       matrix:
@@ -47,13 +49,19 @@ jobs:
     env:
       DATABASE_ADAPTER: ${{ matrix.adapter }}
       BUNDLE_GEMFILE: gemfiles/${{ matrix.appraisal }}.gemfile
-      BUNDLE_PATH: ${{ github.workspace }}/vendor/bundle
     steps:
       - uses: actions/checkout@v2
-      - uses: ruby/setup-ruby@v1
+      - name: Set up Ruby
+        id: set-up-ruby
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          bundler-cache: true
+      - uses: actions/cache@v2
+        with:
+          path: vendor/bundle
+          key: v1-rubygems-local-${{ runner.os }}-${{ matrix.ruby }}-${{ hashFiles(format('gemfiles/{0}.gemfile.lock', matrix.rails_appraisal)) }}
+      - name: Install dependencies
+        run: bin/ci/install
       - name: Run Unit Tests
         run: bundle exec rake spec:unit --trace
       - name: Run Acceptance Tests
